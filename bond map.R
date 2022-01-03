@@ -70,7 +70,7 @@ world_joined %>%
     axis.ticks = element_blank(),
     legend.position = 'bottom'
   ) +
-  ggtitle('How often does Bond visit a country?') +
+  ggtitle('How often does Craig-Bond visit a country?') +
   scale_fill_gradient(NULL, 
                       low = '#A17671', high = '#EB0000', na.value = '#C8C2CE')
 
