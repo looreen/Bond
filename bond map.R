@@ -2,9 +2,7 @@
 #https://www.datanovia.com/en/blog/how-to-create-a-map-using-ggplot2/ 
 #http://www.colorhunter.com/tag/jamesbond/9
 
-library('ggthemes')
-library(transformr)
-library(gganimate)
+source('data load.R')
 
 world <- ggplot() +
   borders("world", colour = "gray85", fill = "gray80") +
@@ -15,20 +13,6 @@ world
 world_map <- map_data("world")
 
 bond %>% select(country_to_join) %>% head()
-
-bond <- bond %>% 
-  mutate(rstats_countries = case_when(
-    country_to_join == 'United Kingdom' ~ 'UK',
-    country_to_join == 'United States' ~ 'USA',
-    country_to_join == 'S. Korea' ~ 'South Korea',
-    country_to_join == 'N. Korea' ~ 'North Korea', 
-    country_to_join == 'Czech Rep.' ~ 'Czech Republic',
-    country_to_join == 'Hong Kong' ~ 'China',
-    country_to_join == 'Macau' ~ 'China', 
-    TRUE ~ country_to_join
-  )) 
-
-
 
 italy_importance <- bond %>% 
   left_join(by = 'Bond', 
@@ -74,11 +58,29 @@ world_joined %>%
   scale_fill_gradient(NULL, 
                       low = '#A17671', high = '#EB0000', na.value = '#C8C2CE')
 
-# Animation 
 
-m <- world_joined %>% 
+# Cumulated
+
+unique(bond$rstats_countries)
+
+bond_cumsum <- bond %>% 
+  select(Year, Movie, Bond, rstats_countries) %>% 
+  arrange(Year) %>% 
+  group_by(Year, rstats_countries) %>% 
+  summarise(count_n = n(), .groups = 'keep') %>% 
+  ungroup() %>% 
+  group_by(rstats_countries) %>% 
+  mutate(cumulated_n = cumsum(count_n)) %>% 
+  ungroup()
+
+world_cum_joined <- world_map %>% 
+  left_join(bond_cumsum, by = c('region' = 'rstats_countries'))
+
+names(world_cum_joined)
+
+world_cum_joined %>% 
   ggplot(aes(long, lat, group = group)) +
-  geom_polygon(aes(fill = count_n)) +#, color = 'white') +
+  geom_polygon(aes(fill = cumulated_n)) +
   theme(
     axis.title = element_blank(), 
     panel.background = element_blank(), 
@@ -87,14 +89,38 @@ m <- world_joined %>%
     axis.ticks = element_blank(),
     legend.position = 'bottom'
   ) +
-  scale_fill_viridis_c(option = "C")
+  scale_fill_gradient(NULL, 
+                      low = '#A17671', high = '#EB0000', na.value = '#C8C2CE')
+
+# Animation 
+
+m <- world_cum_joined %>% 
+  mutate(cumulated_n = ifelse(is.na(cumulated_n), 0, cumulated_n),
+         count_n = ifelse(is.na(count_n), 0, count_n)) %>% 
+  ggplot(aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = cumulated_n)) +#, color = 'white') +
+  theme_void() +
+  theme(
+    axis.title = element_blank(), 
+    panel.background = element_blank(), 
+    text = element_text(family = 'sans'),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position = 'bottom'
+  ) +
+  scale_fill_gradient('Number of visits', low = '#C8C2CE', high = '#EB0000')
+
+  # scale_fill_gradient('Number of visits', low = '#A17671', high = '#EB0000', na.value = '#C8C2CE')
 
 m
-  
-anim <- m +
-  transition_states(Year, transition_length = 2, state_length = 2)+
-  shadow_mark(alpha = 0.5)+
-  ggtitle('{closest_state}')
 
-animate(anim, end_pause = 10)
+anim <- m +
+  ggtitle('Countries visited by a James Bond',
+          subtitle = 'Year: {closest_state}') +
+  transition_states(Year, transition_length = 2, state_length = 5)+
+  shadow_mark()
+
+to_save_map <- animate(anim, end_pause = 10)
+anim_save("animated_map.gif", to_save_map)
+
 
