@@ -94,9 +94,17 @@ world_cum_joined %>%
 
 # Animation 
 
+extra_base_year <- world_cum_joined %>% 
+  select(long, lat, group, order, region, subregion) %>% 
+  distinct() %>% 
+  mutate(Year = 1961, 
+         count_n = 0,
+         cumulated_n = 0)
+
 m <- world_cum_joined %>% 
+  bind_rows(extra_base_year) %>% 
   mutate(cumulated_n = ifelse(is.na(cumulated_n), 0, cumulated_n),
-         count_n = ifelse(is.na(count_n), 0, count_n)) %>% 
+         count_n = ifelse(is.na(count_n), 0, count_n)) %>%
   ggplot(aes(long, lat, group = group)) +
   geom_polygon(aes(fill = cumulated_n)) +#, color = 'white') +
   theme_void() +
@@ -121,6 +129,6 @@ anim <- m +
   shadow_mark()
 
 to_save_map <- animate(anim, end_pause = 10)
-anim_save("animated_map.gif", to_save_map)
+anim_save("animated_map 2.gif", to_save_map)
 
 
